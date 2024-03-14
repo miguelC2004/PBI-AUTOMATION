@@ -1,81 +1,77 @@
+import sys
 import time
 import os
-import sys
-import argparse
 import psutil
 from pywinauto.application import Application
+from pywinauto.keyboard import send_keys
 
-
-def type_keys(string, element):
-    """Type a string char by char to Element window"""
-    for char in string:
-        element.type_keys(char)
-
+# Configuración del archivo de trabajo
+WORKBOOK = r"C:/Users/miguelcatano.3/Desktop/Momento de Afiliación.pbix"  # Ruta al archivo de trabajo
+INIT_WAIT = 180  # Tiempo de espera inicial
+REFRESH_TIMEOUT = 300  # Tiempo de espera para la actualización
 
 def main():
-    # Configuración del archivo de trabajo
-    WORKBOOK = r"C:\Users\miguel\Desktop\sample.pbix"  # Ruta al archivo de trabajo
-
-    # Otros parámetros de configuración
-    INIT_WAIT = 15  # Tiempo de espera inicial
-    REFRESH_TIMEOUT = 30000  # Tiempo de espera para la actualización
-
-    # Kill running PBI
-    PROCNAME = "PBIDesktop.exe"
-    for proc in psutil.process_iter():
-        # check whether the process name matches
-        if proc.name() == PROCNAME:
-            proc.kill()
+    # Terminar instancias de Power BI en ejecución
+    procname = "PBIDesktop.exe"
+    for proc in psutil.process_iter(attrs=['pid', 'name']):
+        if proc.info['name'] == procname:
+            os.kill(proc.info['pid'], 9)
     time.sleep(3)
 
-    # Start PBI and open the workbook
-    print("Starting Power BI")
-    os.system('start "" "' + WORKBOOK + '"')
-    print("Waiting ", INIT_WAIT, "sec")
+    # Iniciar Power BI y abrir el libro de trabajo
+    print("Starting Power BI...")
+    os.startfile(WORKBOOK)
     time.sleep(INIT_WAIT)
 
-    # Connect pywinauto
-    print("Identifying Power BI window")
-    app = Application(backend='uia').connect(path=PROCNAME)
-    win = app.window(title_re='.*Power BI Desktop')
-    time.sleep(5)
-    win.wait("enabled", timeout=300)
-    win.Save.wait("enabled", timeout=300)
-    win.set_focus()
-    win.Home.click_input()
-    win.Save.wait("enabled", timeout=300)
-    win.wait("enabled", timeout=300)
-
-    # Refresh
-    print("Refreshing")
-    win.Refresh.click_input()
-    time.sleep(5)
-    print("Waiting for refresh end (timeout in ", REFRESH_TIMEOUT, "sec)")
+    # Conectar con Power BI usando pywinauto
+    print("Identifying Power BI window...")
+    try:
+        app = Application(backend="uia").connect(path=procname, timeout=120)
+        print("Application connected.")
+    except Exception as e:
+        print(f"Error connecting to Power BI: {e}")
+        sys.exit(1)
 
     try:
-        win.wait("enabled", timeout=REFRESH_TIMEOUT)
-    except TimeoutError:
-        pass
+        win = app.window(found_index=0)
+        win.wait('ready', timeout=120)
+        print("Power BI window is ready.")
+    except Exception as e:
+        print(f"Error finding Power BI window: {e}")
+        sys.exit(1)
 
-    # Save
-    print("Saving")
-    type_keys("%1", win)
-    time.sleep(5)
-    win.wait("enabled", timeout=REFRESH_TIMEOUT)
+    # Refrescar
+    print("Refreshing...")
+    try:
+        # Aquí asumimos que F5 es el atajo para refrescar; ajusta según sea necesario
+        send_keys('{F5}')
+        print("Refresh command sent, waiting...")
+        time.sleep(REFRESH_TIMEOUT)  # Espera para el refresco, ajusta según necesidad
+    except Exception as e:
+        print(f"Error during refresh: {e}")
+        sys.exit(1)
 
-    # Close
-    print("Exiting")
-    win.close()
+    # Guardar
+    print("Saving...")
+    try:
+        send_keys('^s')  # Ctrl+S para guardar
+        time.sleep(5)  # Espera para asegurar que el guardado se complete
+    except Exception as e:
+        print(f"Error during save: {e}")
+        sys.exit(1)
 
-    # Force close
-    for proc in psutil.process_iter():
-        if proc.name() == PROCNAME:
-            proc.kill()
+    # Cerrar Power BI
+    print("Closing Power BI...")
+    try:
+        win.close()
+        time.sleep(5)  # Espera para asegurar que Power BI se haya cerrado
+    except Exception as e:
+        print(f"Error during close: {e}")
+        sys.exit(1)
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(e)
+        print(f"Error: {e}")
         sys.exit(1)
