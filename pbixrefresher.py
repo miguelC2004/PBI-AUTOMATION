@@ -6,7 +6,7 @@ from pywinauto.application import Application
 from pywinauto.keyboard import send_keys
 
 # Configuración del archivo de trabajo
-WORKBOOK = r"C:/Users/miguelcatano.3/Desktop/Momento de Afiliación.pbix"  # Ruta al archivo de trabajo
+WORKBOOK = r"ruta"  # Ruta al archivo de trabajo
 INIT_WAIT = 180  # Tiempo de espera inicial
 REFRESH_TIMEOUT = 300  # Tiempo de espera para la actualización
 
